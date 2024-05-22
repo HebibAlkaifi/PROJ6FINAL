@@ -109,7 +109,61 @@ app.get('/profile', (req,res) => {
     res.cookie('token', '').json('ok');
   });
 
+  
+app.post('/post', uploadMiddleware.single('file'), async (req,res) => {
+    const {originalname,path} = req.file;
+    const parts = originalname.split('.');
+    const ext = parts[parts.length - 1];//entension of file
+    const newPath = path+'.'+ext;
+    fs.renameSync(path, newPath);
+  
+    const {token} = req.cookies;
+    jwt.verify(token, secret, {}, async (err,info) => {
+      if (err) throw err;
+       const {title,summary,content} = req.body;
+    const postDoc = await Post.create({
+      title,
+      summary,
+      content,
+      cover:newPath,
+      author:info.id,
+    });
+    res.json(postDoc);
+  });
+    });
 
+//  Delete API  
+app.delete('/delete', uploadMiddleware.single('file'), async (req, res) => {
+    console.log("In del api");
+    
+    const {token} = req.cookies;
+    jwt.verify(token, secret, {}, async (err,info) => {
+      if (err) throw err;
+
+      const {userid,postid} = req.body;
+      const postDoc = await Post.findById(postid);
+    console.log(postDoc);
+      await Post.findByIdAndDelete(postid);
+      res.json(postDoc);
+    });
+  });
+
+  
+  app.get('/post', async (req,res) => {
+    res.json(
+      await Post.find()
+        .populate('author', ['username'])
+        .sort({createdAt: -1})
+        .limit(20)
+    );
+  });
+  
+app.get('/post/:id', async (req, res) => {
+    const {id} = req.params;
+    const postDoc = await Post.findById(id).populate('author', ['username']);
+    res.json(postDoc);
+  })
+  
   
 const PORT = 4000;
 
