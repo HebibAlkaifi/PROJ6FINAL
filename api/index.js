@@ -45,6 +45,28 @@ app.post('/register', async (req,res) => {
   });
 
   
+app.post('/login', async (req,res) => {
+    const {username,password} = req.body;
+    //find a user with the entered username
+    const userDoc = await User.findOne({username});
+    //match the password for the fined user
+    const passOk = bcrypt.compareSync(password, userDoc.password);
+
+    if (passOk) {
+      // logged in
+      jwt.sign({username,id:userDoc._id}, secret, {}, (err,token) => {
+        if (err) throw err;
+        res.cookie('token', token).json({
+          id:userDoc._id,
+          username,
+        });
+      });
+    } else {
+      res.status(400).json('wrong credentials');
+    }
+  });
+
+  
 const PORT = 4000;
 
 
